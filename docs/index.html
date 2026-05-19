@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dubai Districts</title>
+  <script src="https://cdn.maptiler.com/maptiler-sdk-js/latest/maptiler-sdk.umd.min.js"></script>
+  <link href="https://cdn.maptiler.com/maptiler-sdk-js/latest/maptiler-sdk.css" rel="stylesheet" />
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body { font-family: system-ui, sans-serif; background: #0f1117; }
+
+    #map { width: 100vw; height: 100vh; }
+
+    #tooltip {
+      position: absolute;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(15, 17, 23, 0.85);
+      color: #fff;
+      padding: 8px 18px;
+      border-radius: 20px;
+      font-size: 14px;
+      font-weight: 500;
+      letter-spacing: 0.02em;
+      pointer-events: none;
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(255,255,255,0.1);
+      white-space: nowrap;
+      opacity: 0;
+      transition: opacity 0.15s;
+    }
+
+    #tooltip.visible { opacity: 1; }
+
+    #title {
+      position: absolute;
+      bottom: 32px;
+      left: 24px;
+      color: #fff;
+      font-size: 22px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      text-shadow: 0 1px 4px rgba(0,0,0,0.5);
+      pointer-events: none;
+    }
+
+    #title span {
+      display: block;
+      font-size: 12px;
+      font-weight: 400;
+      opacity: 0.55;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      margin-bottom: 2px;
+    }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+  <div id="tooltip"></div>
+  <div id="title"><span>Map</span>Dubai Districts</div>
+
+  <script type="module">
+    maptilersdk.config.apiKey = 'Jx70Vaf33XzsEXE4oOno';
+
+    const styleRes = await fetch('https://api.maptiler.com/maps/dataviz-v4/style.json?key=Jx70Vaf33XzsEXE4oOno');
+    const style = await styleRes.json();
+    style.layers = style.layers.filter(l => l.type !== 'symbol');
+
+    const map = new maptilersdk.Map({
+      container: 'map',
+      style,
+      center: [55.2708, 25.2048],
+      zoom: 10,
+    });
+
+    const tooltip = document.getElementById('tooltip');
+
+    map.on('load', async () => {
+      map.addSource('hillshade', {
+        type: 'raster',
+        tiles: ['https://api.maptiler.com/tiles/hillshade/{z}/{x}/{y}.webp?key=Jx70Vaf33XzsEXE4oOno'],
+        tileSize: 512,
+        attribution: '© MapTiler',
+      });
+      map.addLayer({ id: 'hillshade', type: 'raster', source: 'hillshade', paint: { 'raster-opacity': 0.6 } });
+
+      const geojson = await fetch('data.json').then(r => r.json());
+
+      map.addSource('districts', { type: 'geojson', data: geojson });
+
+      map.addLayer({
+        id: 'districts-fill',
+        type: 'fill',
+        source: 'districts',
+        paint: {
+          'fill-color': ['coalesce', ['get', 'color'], '#888888'],
+          'fill-opacity': ['case', ['boolean', ['feature-state', 'hover'], false], 0.85, 0.55],
+        },
+      });
+
+      map.addLayer({
+        id: 'districts-outline',
+        type: 'line',
+        source: 'districts',
+        paint: {
+          'line-color': ['coalesce', ['get', 'color'], '#888888'],
+          'line-width': 1.5,
+          'line-opacity': 0.9,
+        },
+      });
+
+      // Hover highlight
+      let hoveredId = null;
+
+      map.on('mousemove', 'districts-fill', (e) => {
+        map.getCanvas().style.cursor = 'pointer';
+        const feature = e.features[0];
+
+        if (hoveredId !== null) {
+          map.setFeatureState({ source: 'districts', id: hoveredId }, { hover: false });
+        }
+        hoveredId = feature.id;
+        map.setFeatureState({ source: 'districts', id: hoveredId }, { hover: true });
+
+        tooltip.textContent = feature.properties.name || '';
+        tooltip.classList.add('visible');
+      });
+
+      map.on('mouseleave', 'districts-fill', () => {
+        map.getCanvas().style.cursor = '';
+        if (hoveredId !== null) {
+          map.setFeatureState({ source: 'districts', id: hoveredId }, { hover: false });
+        }
+        hoveredId = null;
+        tooltip.classList.remove('visible');
+      });
+
+      // Fit map to data bounds
+      const coords = geojson.features.flatMap(f => {
+        const geom = f.geometry;
+        if (!geom) return [];
+        return geom.coordinates.flat(2);
+      });
+      if (coords.length) {
+        const lons = coords.map(c => c[0]);
+        const lats = coords.map(c => c[1]);
+        map.fitBounds(
+          [[Math.min(...lons), Math.min(...lats)], [Math.max(...lons), Math.max(...lats)]],
+          { padding: 32, duration: 1000 }
+        );
+      }
+    });
+  </script>
+</body>
+</html>
