@@ -144,6 +144,33 @@
       </Polygon>
     </Placemark>
     <Placemark>
+      <name>Al Bada</name>
+      <styleUrl>#poly-000000-1200-77-nodesc</styleUrl>
+      <Polygon>
+        <outerBoundaryIs>
+          <LinearRing>
+            <tessellate>1</tessellate>
+            <coordinates>
+              55.272678,25.23898,0
+              55.2697404,25.2332178,0
+              55.2657922,25.2251429,0
+              55.2642472,25.2228523,0
+              55.257166,25.211961,0
+              55.268954,25.205745,0
+              55.275385,25.215318,0
+              55.273977,25.2162,0
+              55.273171,25.217108,0
+              55.268524,25.220009,0
+              55.278928,25.233705,0
+              55.278231,25.234237,0
+              55.278834,25.235115,0
+              55.272678,25.23898,0
+            </coordinates>
+          </LinearRing>
+        </outerBoundaryIs>
+      </Polygon>
+    </Placemark>
+    <Placemark>
       <name>Al Twar 4</name>
       <styleUrl>#poly-000000-1200-77-nodesc</styleUrl>
       <Polygon>
