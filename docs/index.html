@@ -13,29 +13,7 @@
 
     #map { width: 100vw; height: 100vh; }
 
-    #tooltip {
-      position: absolute;
-      top: 20px;
-      left: 50%;
-      transform: translateX(-50%);
-      background: rgba(15, 17, 23, 0.85);
-      color: #fff;
-      padding: 8px 18px;
-      border-radius: 20px;
-      font-size: 14px;
-      font-weight: 500;
-      letter-spacing: 0.02em;
-      pointer-events: none;
-      backdrop-filter: blur(8px);
-      border: 1px solid rgba(255,255,255,0.1);
-      white-space: nowrap;
-      opacity: 0;
-      transition: opacity 0.15s;
-    }
-
-    #tooltip.visible { opacity: 1; }
-
-    #title {
+#title {
       position: absolute;
       bottom: 32px;
       left: 24px;
@@ -60,7 +38,6 @@
 </head>
 <body>
   <div id="map"></div>
-  <div id="tooltip"></div>
   <div id="title"><span>Map</span>Dubai Districts</div>
 
   <script type="module">
@@ -76,8 +53,6 @@
       center: [55.2708, 25.2048],
       zoom: 10,
     });
-
-    const tooltip = document.getElementById('tooltip');
 
     map.on('load', async () => {
       map.addSource('hillshade', {
@@ -98,7 +73,7 @@
         source: 'districts',
         paint: {
           'fill-color': ['coalesce', ['get', 'color'], '#888888'],
-          'fill-opacity': ['case', ['boolean', ['feature-state', 'hover'], false], 0.85, 0.55],
+          'fill-opacity': 0.55,
         },
       });
 
@@ -113,30 +88,33 @@
         },
       });
 
-      // Hover highlight
-      let hoveredId = null;
+      // Label points from the stored coordinates
+      const labelFeatures = geojson.features
+        .filter(f => f.properties.label_lng != null)
+        .map(f => ({
+          type: 'Feature',
+          geometry: { type: 'Point', coordinates: [f.properties.label_lng, f.properties.label_lat] },
+          properties: { name: f.properties.name },
+        }));
 
-      map.on('mousemove', 'districts-fill', (e) => {
-        map.getCanvas().style.cursor = 'pointer';
-        const feature = e.features[0];
+      map.addSource('labels', { type: 'geojson', data: { type: 'FeatureCollection', features: labelFeatures } });
 
-        if (hoveredId !== null) {
-          map.setFeatureState({ source: 'districts', id: hoveredId }, { hover: false });
-        }
-        hoveredId = feature.id;
-        map.setFeatureState({ source: 'districts', id: hoveredId }, { hover: true });
-
-        tooltip.textContent = feature.properties.name || '';
-        tooltip.classList.add('visible');
-      });
-
-      map.on('mouseleave', 'districts-fill', () => {
-        map.getCanvas().style.cursor = '';
-        if (hoveredId !== null) {
-          map.setFeatureState({ source: 'districts', id: hoveredId }, { hover: false });
-        }
-        hoveredId = null;
-        tooltip.classList.remove('visible');
+      map.addLayer({
+        id: 'district-labels',
+        type: 'symbol',
+        source: 'labels',
+        layout: {
+          'text-field': ['get', 'name'],
+          'text-size': 11,
+          'text-font': ['Open Sans Regular'],
+          'text-max-width': 8,
+          'text-anchor': 'center',
+        },
+        paint: {
+          'text-color': '#1a1a1a',
+          'text-halo-color': '#ffffff',
+          'text-halo-width': 1.5,
+        },
       });
 
       // Fit map to data bounds

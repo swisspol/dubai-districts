@@ -35,10 +35,19 @@ def main():
 
         geometry = json.loads(raw_geom)
 
+        label_point = None
+        raw_coords = item.get("coordinates", "")
+        if raw_coords:
+            lat_str, lon_str = raw_coords.split(",")
+            label_point = [float(lon_str.strip()), float(lat_str.strip())]
+
         properties = {
             "name": item.get("name", ""),
             "color": item.get("color", "#888888"),
         }
+        if label_point:
+            properties["label_lng"] = label_point[0]
+            properties["label_lat"] = label_point[1]
         for field in STAT_FIELDS:
             val = item.get(field)
             if val is not None:
