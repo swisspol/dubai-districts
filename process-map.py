@@ -8,6 +8,12 @@ import sys
 INPUT = os.path.join(os.path.dirname(__file__), "dubai-map.json")
 OUTPUT = os.path.join(os.path.dirname(__file__), "docs", "data.json")
 
+COLOR_PALETTE = [
+    "#FFB3BA", "#FFD9A0", "#FFFACD",
+    "#B5EAD7", "#A8D8EA", "#C9B8F0",
+    "#F5A5C8", "#C7F2A4", "#F5CBA5",
+]
+
 STAT_FIELDS = [
     "supply",
     "sales_volume",
@@ -52,6 +58,7 @@ def main():
 
     features = []
     skipped = []
+    color_index = 0
 
     for item in data["items"]:
         name = item.get("name") or f"(id={item.get('id')})"
@@ -62,13 +69,13 @@ def main():
 
         geometry = parse_geometry(raw_geom, name)
 
+        color = COLOR_PALETTE[color_index % len(COLOR_PALETTE)]
+        color_index += 1
+
         properties = {
             "name": item.get("name", ""),
-            "color": item.get("color", "#888888"),
+            "color": color,
         }
-
-        assert properties["color"].startswith("#") and len(properties["color"]) == 7, \
-            f"[{name}] unexpected color format: {properties['color']!r}"
 
         raw_coords = item.get("coordinates", "")
         if raw_coords:
