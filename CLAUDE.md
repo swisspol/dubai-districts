@@ -8,9 +8,6 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 # Regenerate docs/data.json from the source data
 python3 process-map.py
 
-# Regenerate dubai-map.kml from the source data
-python3 json_to_kml.py
-
 # Serve the map at http://localhost:8080
 python3 serve.py
 ```
