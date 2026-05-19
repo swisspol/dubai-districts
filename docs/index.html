@@ -121,7 +121,7 @@
       const coords = geojson.features.flatMap(f => {
         const geom = f.geometry;
         if (!geom) return [];
-        return geom.coordinates.flat(2);
+        return geom.coordinates.flat(1);
       });
       if (coords.length) {
         const lons = coords.map(c => c[0]);
