@@ -19,7 +19,7 @@ python3 serve.py
 
 The pipeline runs in two stages:
 
-1. **Data processing** (`process-map.py`) — reads `dubai-map.json` (165 Dubai districts) and writes `docs/data.json`, a GeoJSON FeatureCollection. Each feature carries `name`, `color` (`#RRGGBB`), `label_lng`/`label_lat` (the district's designated label point), and real-estate stat fields. Colors are assigned via greedy graph coloring (Welsh-Powell order) so no two adjacent districts share a color. After writing, the script validates that zero color conflicts exist and prints the adjacency count.
+1. **Data processing** (`process-map.py`) — reads `dubai-map.json` (165 Dubai districts), merges any additional districts from `Custom.kml`, and writes `docs/data.json`, a GeoJSON FeatureCollection. Each feature carries `name`, `color` (`#RRGGBB`), `label_lng`/`label_lat` (the district's designated label point or centroid for KML-sourced districts), and real-estate stat fields (main JSON only). Colors are assigned via greedy graph coloring (Welsh-Powell order) so no two adjacent districts share a color. After writing, the script validates that zero color conflicts exist and prints the adjacency count. Districts in `Custom.kml` that already exist by name in the main JSON are skipped.
 
 2. **Frontend** (`docs/index.html`) — single-file map viewer, no build step. Loads MapTiler SDK from CDN. At startup it fetches the `dataviz-v4` style JSON, strips all `symbol` layers to suppress basemap labels, then initialises the map. On load it adds a hillshade raster layer (`api.maptiler.com/tiles/hillshade`), the district polygons from `data.json` as fill + outline layers coloured by each feature's `color` property, and a symbol layer that places district name labels at `label_lng`/`label_lat`.
 
@@ -31,6 +31,7 @@ The pipeline runs in two stages:
 - `coordinates` field is `"lat, lon"` (reversed from GeoJSON); `process-map.py` flips it to `[lon, lat]`.
 - All geometries are `Polygon` (no MultiPolygon).
 - `Al Yelayiss 1` has no geometry and is skipped by both scripts.
+- `Custom.kml` holds manually added districts missing from the main JSON. Duplicates (matched by name) are silently skipped. KML coordinates are `lon,lat,alt` — already in GeoJSON order, no flip needed (unlike the `coordinates` field in the main JSON).
 - KML color format is `AABBGGRR` (reversed from HTML `#RRGGBB`); `data.json` keeps plain `#RRGGBB` so no conversion is needed in the frontend.
 - `docs/data.json` is a build artifact — regenerate it after changing `dubai-map.json` or `process-map.py`.
 

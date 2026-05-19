@@ -4,9 +4,13 @@
 import json
 import os
 import sys
+import xml.etree.ElementTree as ET
 
 INPUT = os.path.join(os.path.dirname(__file__), "dubai-map.json")
+CUSTOM_KML = os.path.join(os.path.dirname(__file__), "Custom.kml")
 OUTPUT = os.path.join(os.path.dirname(__file__), "docs", "data.json")
+
+KML_NS = "http://www.opengis.net/kml/2.2"
 
 COLOR_PALETTE = [
     "#FFB3BA", "#FFD9A0", "#FFFACD",
@@ -118,6 +122,48 @@ def parse_geometry(raw_geom, item_name):
     return geom
 
 
+def parse_custom_kml(path):
+    """Parse Custom.kml and return a list of GeoJSON-style feature dicts (no color assigned yet)."""
+    assert os.path.exists(path), f"Custom KML not found: {path}"
+    tree = ET.parse(path)
+    root = tree.getroot()
+    ns = KML_NS
+
+    features = []
+    for pm in root.findall(f".//{{{ns}}}Placemark"):
+        name_el = pm.find(f"{{{ns}}}name")
+        assert name_el is not None, "Placemark missing <name>"
+        name = name_el.text.strip()
+
+        coords_el = pm.find(f".//{{{ns}}}coordinates")
+        assert coords_el is not None, f"[{name}] Placemark missing <coordinates>"
+
+        ring = []
+        for token in coords_el.text.strip().split():
+            parts = token.split(",")
+            assert len(parts) >= 2, f"[{name}] bad coordinate token: {token!r}"
+            ring.append([float(parts[0]), float(parts[1])])
+
+        assert len(ring) >= 3, f"[{name}] ring has fewer than 3 points"
+
+        # Centroid of the ring as label position
+        label_lng = sum(p[0] for p in ring) / len(ring)
+        label_lat = sum(p[1] for p in ring) / len(ring)
+
+        features.append({
+            "type": "Feature",
+            "properties": {
+                "name": name,
+                "label_lng": label_lng,
+                "label_lat": label_lat,
+            },
+            "geometry": {"type": "Polygon", "coordinates": [ring]},
+        })
+
+    assert len(features) > 0, f"No placemarks found in {path}"
+    return features
+
+
 def main():
     assert os.path.exists(INPUT), f"Input file not found: {INPUT}"
     assert os.path.isdir(os.path.dirname(OUTPUT)), \
@@ -155,6 +201,13 @@ def main():
         features.append({"type": "Feature", "properties": properties, "geometry": geometry})
 
     assert len(features) > 0, "No features produced — check geometry data"
+
+    custom = parse_custom_kml(CUSTOM_KML)
+    existing_names = {f["properties"]["name"] for f in features}
+    duplicates = [f["properties"]["name"] for f in custom if f["properties"]["name"] in existing_names]
+    assert not duplicates, f"Duplicate district names in Custom.kml: {', '.join(duplicates)}"
+    features.extend(custom)
+    print(f"Merged {len(custom)} custom districts: {', '.join(f['properties']['name'] for f in custom)}")
 
     adjacency = build_adjacency(features)
     color_assignments = greedy_color(adjacency, COLOR_PALETTE)
